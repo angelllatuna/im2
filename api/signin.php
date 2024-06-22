@@ -1,4 +1,6 @@
 <?php
+session_start(); // Start the session
+
 $servername = "localhost";
 $username = "root";
 $password = "";
@@ -20,7 +22,7 @@ $password_post = $_POST['password'];
 $hashed_password = md5($password_post);
 
 // Prepare SQL statement using prepared statements
-$sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+$sql = "SELECT userid, name FROM users WHERE username = ? AND password = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("ss", $username_post, $hashed_password);
 $stmt->execute();
@@ -30,12 +32,10 @@ $result = $stmt->get_result();
 if ($result->num_rows > 0) {
     // User authenticated successfully
     $row = $result->fetch_assoc();
-    $response = [
-        'name' => $row['name'],
-        'userid' => $row['id']
-    ];
-    echo "User successfully logged in. ";
-    echo json_encode($response);
+    $_SESSION['userid'] = $row['userid']; // Corrected variable name
+    $_SESSION['fullname'] = $row['name']; // Corrected variable name
+    header("Location: main.php");
+    exit(); // Stop further script execution
 } else {
     // Authentication failed
     echo "0";

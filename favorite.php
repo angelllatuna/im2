@@ -1,19 +1,14 @@
 <?php
 session_start();
 
-// Check if the user is logged in
-if (!isset($_SESSION['userid'])) {
-    header("Location: login.php");
-    exit();
-}
+// Get the user ID from session
+$userid = $_SESSION['userid'];
 
-$userid = $_SESSION['userid']; // Assuming you have stored the userid in session when the user logged in
-
-// Database connection
+// Database connection parameters
 $servername = "localhost";
 $username = "root";
 $password = "";
-$dbname = "bookvault"; // Update this with your database name
+$dbname = "bookvault"; // Update with your database name
 
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
@@ -23,19 +18,47 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// Add book to favorites
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['id'])) {
+    $bookId = $_POST['id'];
+
+    // Check if the book is already in favorites
+    $checkSql = "SELECT fav_id FROM favorites WHERE userid = ? AND id = ?";
+    $stmt = $conn->prepare($checkSql);
+    $stmt->bind_param("ii", $userid, $bookId);
+    $stmt->execute();
+    $checkResult = $stmt->get_result();
+
+    if ($checkResult->num_rows == 0) {
+        // Book is not in favorites, add it
+        $insertSql = "INSERT INTO favorites (userid, id) VALUES (?, ?)";
+        $insertStmt = $conn->prepare($insertSql);
+        $insertStmt->bind_param("ii", $userid, $bookId);
+        $insertStmt->execute();
+        $insertStmt->close();
+    } else {
+        echo "<script>alert('This book is already in your favorites.');</script>";
+    }
+
+    $stmt->close();
+}
+
 // Fetch favorite books
 $favorites = [];
-$sql = "SELECT book.id, book.title, book.author, book.genre, book.summary 
+$sql = "SELECT book.title, book.author, book.genre, book.summary
         FROM favorites
-        JOIN book ON favorites.id = book.id 
+        JOIN book ON favorites.id = book.id
         WHERE favorites.userid = ?";
 $stmt = $conn->prepare($sql);
+if ($stmt === false) {
+    die("Prepare failed: " . $conn->error);
+}
 $stmt->bind_param('i', $userid);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
-    while($row = $result->fetch_assoc()) {
+    while ($row = $result->fetch_assoc()) {
         $favorites[] = $row;
     }
 }
@@ -80,6 +103,12 @@ $conn->close();
                         <span>Favorite Books</span>
                     </a>
                 </li>
+                <li class="sidebar-item">
+                    <a href="backup.php" class="sidebar-link">
+                        <i class="fa-solid fa-table-list pe-1"></i>
+                        <span>Backup & Restore</span>
+                    </a>
+                </li>
             </ul>
         </div>
         <button class="logout-button">
@@ -121,19 +150,23 @@ $conn->close();
                                         <th>Author</th>
                                         <th>Genre</th>
                                         <th>Summary</th>
-                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($favorites as $book): ?>
+                                    <?php if (empty($favorites)): ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($book['title']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['author']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['genre']); ?></td>
-                                            <td><?php echo htmlspecialchars($book['summary']); ?></td>
-                                            <td><a href="remove_favorite.php?id=<?php echo $book['id']; ?>&userid=<?php echo $userid; ?>" class="btn btn-danger">Remove from Favorites</a></td>
+                                            <td colspan="4">No favorite books found.</td>
                                         </tr>
-                                    <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <?php foreach ($favorites as $book): ?>
+                                            <tr>
+                                                <td><?php echo htmlspecialchars($book['title']); ?></td>
+                                                <td><?php echo htmlspecialchars($book['author']); ?></td>
+                                                <td><?php echo htmlspecialchars($book['genre']); ?></td>
+                                                <td><?php echo htmlspecialchars($book['summary']); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>

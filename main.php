@@ -1,12 +1,6 @@
 <?php
 session_start();
 
-// Check if the user is logged in
-if (!isset($_SESSION['fullname'])) {
-    header("Location: login.php");
-    exit();
-}
-
 // Database connection
 $servername = "localhost";
 $username = "root";

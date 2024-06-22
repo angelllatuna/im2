@@ -1,3 +1,61 @@
+<?php
+session_start();
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $servername = "localhost";
+    $dbusername = "root";
+    $dbpassword = "";
+    $dbname = "bookvault";
+
+    // Create connection
+    $conn = new mysqli($servername, $dbusername, $dbpassword, $dbname);
+
+    // Check connection
+    if ($conn->connect_error) {
+        die("Connection failed: " . $conn->connect_error);
+    }
+
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+
+    // Prepare a statement
+    $stmt = $conn->prepare("SELECT userid, name, password FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+
+    // Execute the query
+    $stmt->execute();
+
+    // Get the result
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        // Fetch user details
+        $user = $result->fetch_assoc();
+
+        // Verify the password
+        if (password_verify($password, $user['password'])) {
+            $_SESSION['fullname'] = $user['name'];
+            $_SESSION['userid'] = $user['userid'];  // Corrected here
+            $_SESSION['login_success'] = true; // Set login success flag
+            header("Location: main.php");
+            exit();
+        } else {
+            $_SESSION['login_error'] = 'Invalid username or password';
+            header("Location: login.php");
+            exit();
+        }
+    } else {
+        $_SESSION['login_error'] = 'Invalid username or password';
+        header("Location: login.php");
+        exit();
+    }
+
+    // Close the statement and connection
+    $stmt->close();
+    $conn->close();
+}
+?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -58,61 +116,3 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 </body>
 </html>
-
-<?php
-session_start();
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $servername = "localhost";
-    $dbusername = "root";
-    $dbpassword = "";
-    $dbname = "bookvault";
-
-    // Create connection
-    $conn = new mysqli($servername, $dbusername, $dbpassword, $dbname);
-
-    // Check connection
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
-    }
-
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-
-    // Prepare a statement
-    $stmt = $conn->prepare("SELECT userid, name, password FROM users WHERE username = ?");
-    $stmt->bind_param("s", $username);
-
-    // Execute the query
-    $stmt->execute();
-
-    // Get the result
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        // Fetch user details
-        $user = $result->fetch_assoc();
-
-        // Verify the password
-        if (password_verify($password, $user['password'])) {
-            $_SESSION['fullname'] = $user['name'];
-            $_SESSION['userId'] = $user['userid'];
-            $_SESSION['login_success'] = true; // Set login success flag
-            header("Location: main.php");
-            exit();
-        } else {
-            $_SESSION['login_error'] = 'Invalid username or password';
-            header("Location: login.php");
-            exit();
-        }
-    } else {
-        $_SESSION['login_error'] = 'Invalid username or password';
-        header("Location: login.php");
-        exit();
-    }
-
-    // Close the statement and connection
-    $stmt->close();
-    $conn->close();
-}
-?>
